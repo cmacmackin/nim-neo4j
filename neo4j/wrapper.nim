@@ -1,8 +1,9 @@
 ## A wrapper around the `libneo4j-client
 ## <https://github.com/cleishm/libneo4j-client>`_ C driver for the
-## `Neo4j graph database <https://neo4j.com/>`_. These routines are
-## not memory safe and are awkward to use. It is recommended that you
-## use the more advanced interfaces instead.
+## `Neo4j graph database <https://neo4j.com/>`_. While the wrapper has
+## been written to make it as idiomatic as possible, the routines are
+## not memory safe and are still awkward to use. It is recommended
+## that you use the more advanced interfaces instead.
 
 
 import posix
@@ -89,11 +90,11 @@ type
 # =====================================
 
 proc libneo4jClientVersion*(): cstring {.cdecl, importc: "libneo4j_client_version",
-                                      dynlib: libneo4j.}
+                                         dynlib: libneo4j.}
   ## The version string for libneo4j-client.
 
 proc libneo4jClientId*(): cstring {.cdecl, importc: "libneo4j_client_id",
-                                 dynlib: libneo4j.}
+                                    dynlib: libneo4j.}
   ## The default client ID string for libneo4j-client.
 
 # =====================================
@@ -224,22 +225,95 @@ type
     ## An I/O stream for neo4j client.
     ##
     ## read
-    ##   Read bytes from a stream into the supplied buffer.
+    ## ----
+    ##
+    ## Read bytes from a stream into the supplied buffer.
+    ##
+    ## self
+    ##   This stream.
+    ##
+    ## buf
+    ##   A pointer to a memory buffer to read into.
+    ##
+    ## nbyte
+    ##   The size of the memory buffer.
+    ##
+    ## Returns the bytes read, or -1 on error (errno will be set).
+    ##
     ##
     ## readv
-    ##   Read bytes from a stream into the supplied I/O vector.
-    ## 
+    ## -----
+    ##
+    ## Read bytes from a stream into the supplied I/O vector.
+    ##
+    ## self
+    ##   This stream.
+    ##
+    ## iov
+    ##   A pointer to the I/O vector.
+    ##
+    ## iovcnt
+    ##   The length of the I/O vector.
+    ##
+    ## Return the bytes read, or -1 on error (errno will be set).
+    ##
+    ##
     ## write
-    ##   Write bytes to a stream from the supplied buffer.
+    ## -----
+    ##
+    ## Write bytes to a stream from the supplied buffer.
+    ##
+    ## self
+    ##   This stream.
+    ##
+    ## buf
+    ##   A pointer to a memory buffer to read from.
+    ##
+    ## nbyte
+    ##   The size of the memory buffer.
+    ##
+    ## Return the bytes written, or -1 on error (errno will be set).
+    ##
     ##
     ## writev
-    ##   Write bytes to a stream ifrom the supplied I/O vector.
+    ## ------
+    ##
+    ## Write bytes to a stream ifrom the supplied I/O vector.
+    ##
+    ## self
+    ##   This stream.
+    ##
+    ## iov
+    ##   A pointer to the I/O vector.
+    ##
+    ## iovcnt
+    ##   The length of the I/O vector.
+    ##
+    ## Return the bytes written, or -1 on error (errno will be set).
+    ##
     ##
     ## flush
-    ##   Flush the output buffer of the iostream.
+    ## -----
+    ##
+    ## Flush the output buffer of the iostream. For unbuffered streams,
+    ## this is a no-op.
+    ##
+    ## self
+    ##   This stream.
+    ##
+    ## Return 0 on success, or -1 on error (errno will be set).
+    ##
     ##
     ## close
-    ##   Close the stream.
+    ## -----
+    ##
+    ## Close the stream. This function should close the stream and
+    ## deallocate memory associated with it.
+    ## 
+    ## self
+    ##   This stream.
+    ##
+    ## Return 0 on success, or -1 on error (errno will be set).
     ##
     read*: proc (self: ptr Iostream; buf: pointer; nbyte: csize): SsizeT {.cdecl.}
     readv*: proc (self: ptr Iostream; iov: ptr Iovec; iovcnt: cuint): SsizeT {.cdecl.}
@@ -275,7 +349,7 @@ type
     ## 
     tcpConnect*: proc (self: ptr ConnectionFactory; hostname: cstring; port: cuint;
                      config: ptr Config; flags: uint32; logger: ptr Logger): ptr Iostream {.
-        cdecl.}
+                       cdecl.}
   
 
 # =====================================
@@ -484,14 +558,14 @@ type
     value*: Neo4jValue
 
 
-template `type`*(v: Neo4jValue): uint8 =
-  ## Get the type of a neo4j value.
-  ## 
-  ## value
-  ##   The neo4j v.
-  ##
-  ## Returns the type of the value.
-  v.`type`
+#template `type`*(v: Neo4jValue): uint8 =
+#  ## Get the type of a neo4j value.
+#  ## 
+#  ## value
+#  ##   The neo4j v.
+#  ##
+#  ## Returns the type of the value.
+#  v.`type`
 
 proc instanceof*(value: Neo4jValue; `type`: Neo4jType): bool {.cdecl,
     importc: "neo4j_instanceof", dynlib: libneo4j.}
@@ -563,7 +637,7 @@ proc fprint*(value: Neo4jValue; stream: File): SsizeT {.cdecl, importc: "neo4j_f
   ## Returns the number of bytes written to the stream, or -1 on error
   ##         (errno will be set).
 
-proc eq*(value1: Neo4jValue; value2: Neo4jValue): bool {.cdecl, importc: "neo4j_eq",
+proc `==`*(value1: Neo4jValue; value2: Neo4jValue): bool {.cdecl, importc: "neo4j_eq",
     dynlib: libneo4j.}
   ## Compare two neo4j values for equality.
   ## 
@@ -582,7 +656,7 @@ template isNull*(v: Neo4jValue): bool=
   ##   The neo4j value.
   ##
   ## Returns ``true`` if the value is the null value.
-  (`type`(v) == neo4j_Null)
+  (`type`(v) == NEO4J_NULL)
 
 var null* {.importc: "neo4j_null", dynlib: libneo4j.}: Neo4jValue ## The neo4j null value.
 
@@ -594,8 +668,8 @@ proc newBool*(value: bool): Neo4jValue {.cdecl, importc: "neo4j_bool", dynlib: l
   ##
   ## Returns a neo4j value encoding the Bool.
 
-proc boolValue*(value: Neo4jValue): bool {.cdecl, importc: "neo4j_bool_value",
-                                   dynlib: libneo4j.}
+proc toBool*(value: Neo4jValue): bool {.cdecl, importc: "neo4j_bool_value",
+                                        dynlib: libneo4j.}
   ## Return the native boolean value from a neo4j boolean.
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_BOOL.
@@ -614,7 +688,7 @@ proc newInt*(value: clonglong): Neo4jValue {.cdecl, importc: "neo4j_int", dynlib
   ##         INT64_MAX, or it will be capped to the closest value.
   ## Returns a neo4j value encoding the Int.
 
-proc intValue*(value: Neo4jValue): clonglong {.cdecl, importc: "neo4j_int_value",
+proc toInt*(value: Neo4jValue): clonglong {.cdecl, importc: "neo4j_int_value",
                                                dynlib: libneo4j.}
   ## Return the native integer value from a neo4j int.
   ## 
@@ -634,7 +708,7 @@ proc newFloat*(value: cdouble): Neo4jValue {.cdecl, importc: "neo4j_float",
   ##
   ## Returns a neo4j value encoding the Float.
   
-proc floatValue*(value: Neo4jValue): cdouble {.cdecl, importc: "neo4j_float_value",
+proc toFloat*(value: Neo4jValue): cdouble {.cdecl, importc: "neo4j_float_value",
                                                dynlib: libneo4j.}
   ## Return the native double value from a neo4j float.
   ## 
@@ -681,8 +755,8 @@ proc stringLength*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_string_len
   ##
   ## Returns the length of the string in bytes.
 
-proc ustringValue*(value: Neo4jValue): cstring {.cdecl, importc: "neo4j_ustring_value",
-                                                 dynlib: libneo4j.}
+proc toUstring*(value: Neo4jValue): cstring {.cdecl, importc: "neo4j_ustring_value",
+                                              dynlib: libneo4j.}
   ## Return a pointer to a UTF-8 string.
   ## 
   ## The pointer will be to a UTF-8 string, and will NOT be `NULL` terminated.
@@ -696,7 +770,7 @@ proc ustringValue*(value: Neo4jValue): cstring {.cdecl, importc: "neo4j_ustring_
   ##
   ## Returns a pointer to a UTF-8 string, which will not be terminated.
 
-proc stringValue*(value: Neo4jValue; buffer: cstring; length: csize): cstring {.cdecl,
+proc toString*(value: Neo4jValue; buffer: cstring; length: csize): cstring {.cdecl,
     importc: "neo4j_string_value", dynlib: libneo4j.}
   ## Copy a neo4j string to a ``NULL`` terminated buffer.
   ## 
@@ -722,7 +796,7 @@ proc stringValue*(value: Neo4jValue; buffer: cstring; length: csize): cstring {.
   ##
   ## Returns a pointer to the supplied buffer.
 
-proc list*(items: ptr Neo4jValue; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_list",
+proc newList*(items: ptr Neo4jValue; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_list",
     dynlib: libneo4j.}
   ## Construct a neo4j value encoding a list.
   ## 
@@ -737,8 +811,8 @@ proc list*(items: ptr Neo4jValue; n: cuint): Neo4jValue {.cdecl, importc: "neo4j
   ##
   ## Returns a neo4j value encoding the List.
 
-proc listLength*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_list_length",
-                                     dynlib: libneo4j.}
+proc listLen*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_list_length",
+                                          dynlib: libneo4j.}
   ## Return the length of a neo4j list (number of entries).
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_LIST.
@@ -748,9 +822,9 @@ proc listLength*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_list_length"
   ##
   ## Returns the number of entries.
 
-proc listGet*(value: Neo4jValue; index: cuint): Neo4jValue {.cdecl,
-                                                             importc: "neo4j_list_get",
-                                                             dynlib: libneo4j.}
+proc `[]`*(value: Neo4jValue; index: cuint): Neo4jValue {.cdecl,
+                                                          importc: "neo4j_list_get",
+                                                          dynlib: libneo4j.}
   ## Return an element from a neo4j list.
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_LIST.
@@ -764,7 +838,7 @@ proc listGet*(value: Neo4jValue; index: cuint): Neo4jValue {.cdecl,
   ## Returns a pointer to a ``neo4j_value_t`` element, or ``NULL`` if
   ## the index is beyond the end of the list.
 
-proc map*(entries: ptr MapEntryT; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_map",
+proc newMap*(entries: ptr MapEntryT; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_map",
                                                           dynlib: libneo4j.}
   ## Construct a neo4j value encoding a map.
   ## 
@@ -779,8 +853,8 @@ proc map*(entries: ptr MapEntryT; n: cuint): Neo4jValue {.cdecl, importc: "neo4j
   ##
   ## Returns a neo4j value encoding the Map.
 
-proc mapSize*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_map_size",
-                                  dynlib: libneo4j.}
+proc mapLen*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_map_size",
+                                      dynlib: libneo4j.}
   ## Return the size of a neo4j map (number of entries).
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_MAP.
@@ -806,7 +880,7 @@ proc mapGetentry*(value: Neo4jValue; index: cuint): ptr MapEntryT {.cdecl,
   ## is too large.
 
 
-template mapGet*(value: Neo4jValue, key: cstring): Neo4jValue =
+template `[]`*(value: Neo4jValue, key: cstring): Neo4jValue =
   ## Return a value from a neo4j map.
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_MAP.
@@ -821,9 +895,9 @@ template mapGet*(value: Neo4jValue, key: cstring): Neo4jValue =
   ## not known.
   mapKget(value, newString(key))
 
-proc mapKget*(value: Neo4jValue; key: Neo4jValue): Neo4jValue {.cdecl,
-                                                                importc: "neo4j_map_kget",
-                                                                dynlib: libneo4j.}
+proc `[]`*(value: Neo4jValue; key: Neo4jValue): Neo4jValue {.cdecl,
+                                                             importc: "neo4j_map_kget",
+                                                             dynlib: libneo4j.}
   ## Return a value from a neo4j map.
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_MAP.
@@ -837,7 +911,7 @@ proc mapKget*(value: Neo4jValue; key: Neo4jValue): Neo4jValue {.cdecl,
   ## Returns the value stored under the specified key, or ``NULL`` if the key is
   ## not known.
 
-template mapEntry*(key: cstring, value: Neo4jValue): MapEntryT =
+template newMapEntry*(key: cstring, value: Neo4jValue): MapEntryT =
   ## Constrct a neo4j map entry.
   ## 
   ## key
@@ -895,7 +969,8 @@ proc nodeIdentity*(value: Neo4jValue): Neo4jValue {.cdecl, importc: "neo4j_node_
   ## Returns a neo4j value encoding the Identity of the node.
 
 proc relationshipType*(value: Neo4jValue): Neo4jValue {.cdecl,
-    importc: "neo4j_relationship_type", dynlib: libneo4j.}
+                                                        importc: "neo4j_relationship_type",
+                                                        dynlib: libneo4j.}
   ## Return the type of a neo4j relationship.
   ## 
   ## Note that the result is undefined if the value is not of type
@@ -945,8 +1020,8 @@ proc relationshipEndNodeIdentity*(value: Neo4jValue): Neo4jValue {.cdecl,
   ##
   ## Returns a neo4j value encoding the Identity of the end node.
 
-proc pathLength*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_path_length",
-                                             dynlib: libneo4j.}
+proc pathLen*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_path_length",
+                                          dynlib: libneo4j.}
   ## Return the length of a neo4j path.
   ## 
   ## The length of a path is defined by the number of relationships included in
@@ -1014,7 +1089,7 @@ proc configFree*(config: ptr Config) {.cdecl, importc: "neo4j_config_free",
   ##   A pointer to a neo4j client configuration. This pointer will
   ##   be invalid after the function returns.
 
-proc configDup*(config: ptr Config): ptr Config {.cdecl, importc: "neo4j_config_dup",
+proc copy*(config: ptr Config): ptr Config {.cdecl, importc: "neo4j_config_dup",
     dynlib: libneo4j.}
   ## Duplicate a neo4j client configuration.
   ## 
@@ -1026,7 +1101,7 @@ proc configDup*(config: ptr Config): ptr Config {.cdecl, importc: "neo4j_config_
   ##
   ## Returns a duplicate configuration.
 
-proc configSetClientId*(config: ptr Config; clientId: cstring) {.cdecl,
+proc `clientId=`*(config: ptr Config; clientId: cstring) {.cdecl,
     importc: "neo4j_config_set_client_id", dynlib: libneo4j.}
   ## Set the client ID.
   ## 
@@ -1040,7 +1115,7 @@ proc configSetClientId*(config: ptr Config; clientId: cstring) {.cdecl,
   ##   whilst the config is allocated _or if any connections opened with
   ##   the config remain active_.
 
-proc configGetClientId*(config: ptr Config): cstring {.cdecl,
+proc clientId*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_client_id", dynlib: libneo4j.}
   ## Get the client ID in the neo4j client configuration.
   ## 
@@ -1052,7 +1127,7 @@ proc configGetClientId*(config: ptr Config): cstring {.cdecl,
 const
   NEO4J_MAXUSERNAMELEN* = 1023
 
-proc configSetUsername*(config: ptr Config; username: cstring): cint {.cdecl,
+proc setUsername*(config: ptr Config; username: cstring): cint {.cdecl,
     importc: "neo4j_config_set_username", dynlib: libneo4j.}
   ## Set the username in the neo4j client configuration.
   ## 
@@ -1065,7 +1140,7 @@ proc configSetUsername*(config: ptr Config; username: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetUsername*(config: ptr Config): cstring {.cdecl,
+proc username*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_username", dynlib: libneo4j.}
   ## Get the username in the neo4j client configuration.
   ## 
@@ -1080,7 +1155,7 @@ proc configGetUsername*(config: ptr Config): cstring {.cdecl,
 const
   NEO4J_MAXPASSWORDLEN* = 1023
 
-proc configSetPassword*(config: ptr Config; password: cstring): cint {.cdecl,
+proc setPassword*(config: ptr Config; password: cstring): cint {.cdecl,
     importc: "neo4j_config_set_password", dynlib: libneo4j.}
   ## Set the password in the neo4j client configuration.
   ## 
@@ -1093,7 +1168,7 @@ proc configSetPassword*(config: ptr Config; password: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configSetBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallbackT;
+proc setBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallbackT;
                                 userdata: pointer): cint {.cdecl,
     importc: "neo4j_config_set_basic_auth_callback", dynlib: libneo4j.}
   ## Set the basic authentication callback.
@@ -1113,7 +1188,7 @@ proc configSetBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallback
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configSetTlsPrivateKey*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setTlsPrivateKey*(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_TLS_private_key", dynlib: libneo4j.}
   ## Set the location of a TLS private key and certificate chain.
   ## 
@@ -1128,7 +1203,7 @@ proc configSetTlsPrivateKey*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetTlsPrivateKey*(config: ptr Config): cstring {.cdecl,
+proc tlsPrivateKey*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_TLS_private_key", dynlib: libneo4j.}
   ## Obtain the path to the TLS private key and certificate chain.
   ## 
@@ -1137,7 +1212,7 @@ proc configGetTlsPrivateKey*(config: ptr Config): cstring {.cdecl,
   ##
   ## Returns the path set in the config, or `NULL` if none.
 
-proc configSetTlsPrivateKeyPasswordCallback*(config: ptr Config;
+proc setTlsPrivateKeyPasswordCallback*(config: ptr Config;
     callback: PasswordCallbackT; userdata: pointer): cint {.cdecl,
     importc: "neo4j_config_set_TLS_private_key_password_callback",
     dynlib: libneo4j.}
@@ -1155,7 +1230,7 @@ proc configSetTlsPrivateKeyPasswordCallback*(config: ptr Config;
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configSetTlsPrivateKeyPassword*(config: ptr Config; password: cstring): cint {.
+proc setTlsPrivateKeyPassword*(config: ptr Config; password: cstring): cint {.
     cdecl, importc: "neo4j_config_set_TLS_private_key_password", dynlib: libneo4j.}
   ## Set the password for the TLS private key file.
   ## 
@@ -1172,7 +1247,7 @@ proc configSetTlsPrivateKeyPassword*(config: ptr Config; password: cstring): cin
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configSetTlsCaFile*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setTlsCaFile*(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_TLS_ca_file", dynlib: libneo4j.}
   ## Set the location of a file containing TLS certificate authorities (and CRLs).
   ## 
@@ -1189,7 +1264,7 @@ proc configSetTlsCaFile*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-  proc configGetTlsCaFile*(config: ptr Config): cstring {.cdecl,
+proc tlsCaFile*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_TLS_ca_file", dynlib: libneo4j.}
   ## Obtain the path to the TLS certificate authority file.
   ## 
@@ -1198,7 +1273,7 @@ proc configSetTlsCaFile*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## Returns the path set in the config, or ``NULL`` if none.
 
-proc configSetTlsCaDir*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setTlsCaDir*(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_TLS_ca_dir", dynlib: libneo4j.}
   ## Set the location of a directory of TLS certificate authorities (and CRLs).
   ## 
@@ -1215,7 +1290,7 @@ proc configSetTlsCaDir*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetTlsCaDir*(config: ptr Config): cstring {.cdecl,
+proc tlsCaDir*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_TLS_ca_dir", dynlib: libneo4j.}
   ## Obtain the path to the TLS certificate authority directory.
   ## 
@@ -1224,7 +1299,7 @@ proc configGetTlsCaDir*(config: ptr Config): cstring {.cdecl,
   ##
   ## Returns the path set in the config, or ``NULL`` if none.
 
-proc configSetTrustKnownHosts*(config: ptr Config; enable: bool): cint {.cdecl,
+proc setTrustKnownHosts*(config: ptr Config; enable: bool): cint {.cdecl,
     importc: "neo4j_config_set_trust_known_hosts", dynlib: libneo4j.}
   ## Enable or disable trusting of known hosts.
   ## 
@@ -1245,7 +1320,7 @@ proc configSetTrustKnownHosts*(config: ptr Config; enable: bool): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetTrustKnownHosts*(config: ptr Config): bool {.cdecl,
+proc trustKnownHosts*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_trust_known_hosts", dynlib: libneo4j.}
   ## Check if trusting of known hosts is enabled.
   ## 
@@ -1254,7 +1329,7 @@ proc configGetTrustKnownHosts*(config: ptr Config): bool {.cdecl,
   ##
   ## Returns ``true`` if enabled and ``false`` otherwise.
 
-proc configSetKnownHostsFile*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setKnownHostsFile*(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_known_hosts_file", dynlib: libneo4j.}
   ## Set the location of the known hosts file for TLS certificates.
   ## 
@@ -1271,7 +1346,7 @@ proc configSetKnownHostsFile*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetKnownHostsFile*(config: ptr Config): cstring {.cdecl,
+proc knownHostsFile*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_known_hosts_file", dynlib: libneo4j.}
   ## Obtain the path to the known hosts file.
   ## 
@@ -1316,9 +1391,9 @@ type
                                 fingerprint: cstring;
                                 reason: UnverifiedHostReasonT): cint {.cdecl.}
 
-proc configSetUnverifiedHostCallback*(config: ptr Config;
-                                     callback: UnverifiedHostCallbackT;
-                                     userdata: pointer): cint {.cdecl,
+proc setUnverifiedHostCallback*(config: ptr Config;
+                                callback: UnverifiedHostCallbackT;
+                                userdata: pointer): cint {.cdecl,
     importc: "neo4j_config_set_unverified_host_callback", dynlib: libneo4j.}
   ## Set the unverified host callback.
   ## 
@@ -1333,7 +1408,7 @@ proc configSetUnverifiedHostCallback*(config: ptr Config;
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configSetSndbufSize*(config: ptr Config; size: csize): cint {.cdecl,
+proc setSndbufSize*(config: ptr Config; size: csize): cint {.cdecl,
     importc: "neo4j_config_set_sndbuf_size", dynlib: libneo4j.}
   ## Set the I/O output buffer size.
   ## 
@@ -1345,7 +1420,7 @@ proc configSetSndbufSize*(config: ptr Config; size: csize): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetSndbufSize*(config: ptr Config): csize {.cdecl,
+proc sndbufSize*(config: ptr Config): csize {.cdecl,
     importc: "neo4j_config_get_sndbuf_size", dynlib: libneo4j.}
   ## Get the size for the I/O output buffer.
   ## 
@@ -1354,7 +1429,7 @@ proc configGetSndbufSize*(config: ptr Config): csize {.cdecl,
   ##
   ## Returns the sndbuf size.
 
-proc configSetRcvbufSize*(config: ptr Config; size: csize): cint {.cdecl,
+proc setRcvbufSize*(config: ptr Config; size: csize): cint {.cdecl,
     importc: "neo4j_config_set_rcvbuf_size", dynlib: libneo4j.}
   ## Set the I/O input buffer size.
   ## 
@@ -1366,7 +1441,7 @@ proc configSetRcvbufSize*(config: ptr Config; size: csize): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetRcvbufSize*(config: ptr Config): csize {.cdecl,
+proc rcvbufSize*(config: ptr Config): csize {.cdecl,
     importc: "neo4j_config_get_rcvbuf_size", dynlib: libneo4j.}
   ## Get the size for the I/O input buffer.
   ## 
@@ -1375,7 +1450,7 @@ proc configGetRcvbufSize*(config: ptr Config): csize {.cdecl,
   ##
   ## Returns the rcvbuf size.
 
-proc configSetLoggerProvider*(config: ptr Config;
+proc `loggerProvider=`*(config: ptr Config;
                              loggerProvider: ptr LoggerProvider) {.cdecl,
     importc: "neo4j_config_set_logger_provider", dynlib: libneo4j.}
   ## Set a logger provider in the neo4j client configuration.
@@ -1387,7 +1462,7 @@ proc configSetLoggerProvider*(config: ptr Config;
   ##   The logger provider function.
   ##
 
-proc configSetSoSndbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
+proc setSoSndbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
     importc: "neo4j_config_set_so_sndbuf_size", dynlib: libneo4j.}
   ## Set the socket send buffer size.
   ## 
@@ -1400,7 +1475,7 @@ proc configSetSoSndbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
   ##   The socket send buffer size, or 0 to use the system default.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
-proc configGetSoSndbufSize*(config: ptr Config): cuint {.cdecl,
+proc soSndbufSize*(config: ptr Config): cuint {.cdecl,
     importc: "neo4j_config_get_so_sndbuf_size", dynlib: libneo4j.}
   ## Get the size for the socket send buffer.
   ## 
@@ -1409,7 +1484,7 @@ proc configGetSoSndbufSize*(config: ptr Config): cuint {.cdecl,
   ##
   ## Returns the so_sndbuf size.
 
-proc configSetSoRcvbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
+proc setSoRcvbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
     importc: "neo4j_config_set_so_rcvbuf_size", dynlib: libneo4j.}
   ## Set the socket receive buffer size.
   ## 
@@ -1423,7 +1498,7 @@ proc configSetSoRcvbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc configGetSoRcvbufSize*(config: ptr Config): cuint {.cdecl,
+proc soRcvbufSize*(config: ptr Config): cuint {.cdecl,
     importc: "neo4j_config_get_so_rcvbuf_size", dynlib: libneo4j.}
   ## Get the size for the socket receive buffer.
   ## 
@@ -1432,7 +1507,7 @@ proc configGetSoRcvbufSize*(config: ptr Config): cuint {.cdecl,
   ##
   ## Returns the so_rcvbuf size.
 
-proc configSetConnectionFactory*(config: ptr Config; factory: ptr ConnectionFactory) {.
+proc `connectionFactory=`*(config: ptr Config; factory: ptr ConnectionFactory) {.
     cdecl, importc: "neo4j_config_set_connection_factory", dynlib: libneo4j.}
   ## Set a connection factory.
   ## 
@@ -1449,7 +1524,7 @@ var stdConnectionFactory* {.importc: "neo4j_std_connection_factory",
 
 var stdMemoryAllocator* {.importc: "neo4j_std_memory_allocator", dynlib: libneo4j.}: MemoryAllocator ## The standard memory allocator. This memory allocator delegates to the system malloc/free functions.
 
-proc configSetMemoryAllocator*(config: ptr Config; allocator: ptr MemoryAllocator) {.
+proc `memoryAllocator=`*(config: ptr Config; allocator: ptr MemoryAllocator) {.
     cdecl, importc: "neo4j_config_set_memory_allocator", dynlib: libneo4j.}
   ## Set a memory allocator.
   ## 
@@ -1460,7 +1535,7 @@ proc configSetMemoryAllocator*(config: ptr Config; allocator: ptr MemoryAllocato
   ##   The memory allocator.
   ##
 
-proc configGetMemoryAllocator*(config: ptr Config): ptr MemoryAllocator {.cdecl,
+proc memoryAllocator*(config: ptr Config): ptr MemoryAllocator {.cdecl,
     importc: "neo4j_config_get_memory_allocator", dynlib: libneo4j.}
   ## Get the memory allocator.
   ## 
@@ -1469,7 +1544,7 @@ proc configGetMemoryAllocator*(config: ptr Config): ptr MemoryAllocator {.cdecl,
   ##
   ## Returns the memory allocator.
 
-proc configSetMaxPipelinedRequests*(config: ptr Config; n: cuint) {.cdecl,
+proc `maxPipelinedRequests=`*(config: ptr Config; n: cuint) {.cdecl,
     importc: "neo4j_config_set_max_pipelined_requests", dynlib: libneo4j.}
   ## Set the maximum number of requests that can be pipelined to the
   ## server.
@@ -1486,7 +1561,7 @@ proc configSetMaxPipelinedRequests*(config: ptr Config; n: cuint) {.cdecl,
   ##   The new maximum.
   ##
 
-proc configGetMaxPipelinedRequests*(config: ptr Config): cuint {.cdecl,
+proc maxPipelinedRequests*(config: ptr Config): cuint {.cdecl,
     importc: "neo4j_config_get_max_pipelined_requests", dynlib: libneo4j.}
   ## Get the maximum number of requests that can be pipelined to the server.
   ## 
@@ -1600,7 +1675,7 @@ proc close*(connection: ptr Connection): cint {.cdecl, importc: "neo4j_close",
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc connectionHostname*(connection: ptr Connection): cstring {.cdecl,
+proc hostname*(connection: ptr Connection): cstring {.cdecl,
     importc: "neo4j_connection_hostname", dynlib: libneo4j.}
   ## Get the hostname for a connection.
   ## 
@@ -1610,7 +1685,7 @@ proc connectionHostname*(connection: ptr Connection): cstring {.cdecl,
   ## Returns a pointer to a hostname string, which will remain valid
   ## only whilst the connection remains open.
 
-proc connectionPort*(connection: ptr Connection): cuint {.cdecl,
+proc port*(connection: ptr Connection): cuint {.cdecl,
     importc: "neo4j_connection_port", dynlib: libneo4j.}
   ## Get the port for a connection.
   ## 
@@ -1619,7 +1694,7 @@ proc connectionPort*(connection: ptr Connection): cuint {.cdecl,
   ##
   ## Returns the port of the connection.
 
-proc connectionUsername*(connection: ptr Connection): cstring {.cdecl,
+proc username*(connection: ptr Connection): cstring {.cdecl,
     importc: "neo4j_connection_username", dynlib: libneo4j.}
   ## Get the username for a connection.
   ## 
@@ -1922,8 +1997,9 @@ proc failureDetails*(results: ptr ResultStream): ptr FailureDetails {.cdecl,
   ## Returns a pointer to the failure details, or ``NULL`` if no failure details
   ## were available.
 
-proc resultCount*(results: ptr ResultStream): culonglong {.cdecl,
-    importc: "neo4j_result_count", dynlib: libneo4j.}
+proc len*(results: ptr ResultStream): culonglong {.cdecl,
+                                                   importc: "neo4j_result_count",
+                                                   dynlib: libneo4j.}
   ## Return the number of records received in a result stream.
   ## 
   ## This value will continue to increase until all results have been fetched.
@@ -1989,10 +2065,10 @@ proc statementType*(results: ptr ResultStream): cint {.cdecl,
 
 type
   UpdateCounts* {.final, pure.}  = object
-  ## Update counts.
-  ## 
-  ## These are a count of all the updates that occurred as a result of
-  ## the statement sent to neo4j.
+    ## Update counts.
+    ## 
+    ## These are a count of all the updates that occurred as a result of
+    ## the statement sent to neo4j.
     nodesCreated*: culonglong ## Nodes created.
     nodesDeleted*: culonglong ## Nodes deleted.
     relationshipsCreated*: culonglong ## Relationships created.
@@ -2082,7 +2158,7 @@ proc statementPlanRelease*(plan: ptr StatementPlan) {.cdecl,
 # result
 # =====================================
 
-proc resultField*(result: ptr JobResult; index: cuint): Neo4jValue {.cdecl,
+proc `[]`*(result: ptr JobResult; index: cuint): Neo4jValue {.cdecl,
     importc: "neo4j_result_field", dynlib: libneo4j.}
   ## Get a field from a result.
   ## 
@@ -2131,7 +2207,7 @@ const
   NEO4J_RENDER_NO_WRAP_MARKERS* = (1 shl 6)
   NEO4J_RENDER_ANSI_COLOR* = (1 shl 7)
 
-proc configSetRenderNulls*(config: ptr Config; enable: bool) {.cdecl,
+proc `renderNulls=`*(config: ptr Config; enable: bool) {.cdecl,
     importc: "neo4j_config_set_render_nulls", dynlib: libneo4j.}
   ## Enable or disable rendering NEO4J_NULL values.
   ## 
@@ -2145,7 +2221,7 @@ proc configSetRenderNulls*(config: ptr Config; enable: bool) {.cdecl,
   ##   ``true`` to enable rendering of NEO4J_NULL values, and ``false``
   ##   to disable this behaviour.
 
-proc configGetRenderNulls*(config: ptr Config): bool {.cdecl,
+proc renderNulls*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_render_nulls", dynlib: libneo4j.}
   ## Check if rendering of NEO4J_NULL values is enabled.
   ## 
@@ -2155,7 +2231,7 @@ proc configGetRenderNulls*(config: ptr Config): bool {.cdecl,
   ## Returns ``true`` if rendering of NEO4J_NULL values is enabled, and
   ## ``false`` otherwise.
 
-proc configSetRenderQuotedStrings*(config: ptr Config; enable: bool) {.cdecl,
+proc `enderQuotedStrings=`*(config: ptr Config; enable: bool) {.cdecl,
     importc: "neo4j_config_set_render_quoted_strings", dynlib: libneo4j.}
   ## Enable or disable quoting of NEO4J_STRING values.
   ## 
@@ -2172,7 +2248,7 @@ proc configSetRenderQuotedStrings*(config: ptr Config; enable: bool) {.cdecl,
   ##   ``true`` to enable rendering of NEO4J_STRING values with
   ##   quotes, and ``false`` to disable this behaviour.
 
-proc configGetRenderQuotedStrings*(config: ptr Config): bool {.cdecl,
+proc renderQuotedStrings*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_render_quoted_strings", dynlib: libneo4j.}
   ## Check if quoting of NEO4J_STRING values is enabled.
   ## 
@@ -2185,7 +2261,7 @@ proc configGetRenderQuotedStrings*(config: ptr Config): bool {.cdecl,
   ## Returns ``true`` if quoting of NEO4J_STRING values is enabled, and ``false``
   ## otherwise.
 
-proc configSetRenderAscii*(config: ptr Config; enable: bool) {.cdecl,
+proc `renderAscii=`*(config: ptr Config; enable: bool) {.cdecl,
     importc: "neo4j_config_set_render_ascii", dynlib: libneo4j.}
   ## Enable or disable rendering in ASCII-only.
   ## 
@@ -2202,7 +2278,7 @@ proc configSetRenderAscii*(config: ptr Config; enable: bool) {.cdecl,
   ##   ``true`` to enable rendering in only ASCII characters,
   ##   and ``false`` to disable this behaviour.
 
-proc configGetRenderAscii*(config: ptr Config): bool {.cdecl,
+proc renderAscii*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_render_ascii", dynlib: libneo4j.}
   ## Check if ASCII-only rendering is enabled.
   ## 
@@ -2214,7 +2290,7 @@ proc configGetRenderAscii*(config: ptr Config): bool {.cdecl,
   ## Returns ``true`` if ASCII-only rendering is enabled, and ``false``
   ## otherwise.
 
-proc configSetRenderRowlines*(config: ptr Config; enable: bool) {.cdecl,
+proc `renderRowlines=`*(config: ptr Config; enable: bool) {.cdecl,
     importc: "neo4j_config_set_render_rowlines", dynlib: libneo4j.}
   ## Enable or disable rendering of rowlines in result tables.
   ## 
@@ -2230,7 +2306,7 @@ proc configSetRenderRowlines*(config: ptr Config; enable: bool) {.cdecl,
   ##   ``true`` to enable rowline rendering, and ``false`` to disable
   ##   this behaviour.
 
-proc configGetRenderRowlines*(config: ptr Config): bool {.cdecl,
+proc renderRowlines*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_render_rowlines", dynlib: libneo4j.}
   ## Check if rendering of rowlines is enabled.
   ## 
@@ -2242,7 +2318,7 @@ proc configGetRenderRowlines*(config: ptr Config): bool {.cdecl,
   ## Returns ``true`` if rowline rendering is enabled, and ``false``
   ##         otherwise.
 
-proc configSetRenderWrappedValues*(config: ptr Config; enable: bool) {.cdecl,
+proc `renderWrappedValues=`*(config: ptr Config; enable: bool) {.cdecl,
     importc: "neo4j_config_set_render_wrapped_values", dynlib: libneo4j.}
   ## Enable or disable wrapping of values in result tables.
   ## 
@@ -2258,7 +2334,7 @@ proc configSetRenderWrappedValues*(config: ptr Config; enable: bool) {.cdecl,
   ##   ``true`` to enable value wrapping, and ``false`` to disable this
   ##   behaviour.
 
-proc configGetRenderWrappedValues*(config: ptr Config): bool {.cdecl,
+proc renderWrappedValues*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_render_wrapped_values", dynlib: libneo4j.}
   ## Check if wrapping of values in result tables is enabled.
   ## 
@@ -2269,7 +2345,7 @@ proc configGetRenderWrappedValues*(config: ptr Config): bool {.cdecl,
   ##
   ## Returns ``true`` if wrapping of values is enabled, and ``false`` otherwise.
 
-proc configSetRenderWrapMarkers*(config: ptr Config; enable: bool) {.cdecl,
+proc `renderWrapMarkers=`*(config: ptr Config; enable: bool) {.cdecl,
     importc: "neo4j_config_set_render_wrap_markers", dynlib: libneo4j.}
   ## Enable or disable the rendering of wrap markers when wrapping or truncating.
   ## 
@@ -2285,7 +2361,7 @@ proc configSetRenderWrapMarkers*(config: ptr Config; enable: bool) {.cdecl,
   ##   ``true`` to display wrap markers, and ``false`` to disable this
   ##   behaviour.
 
-proc configGetRenderWrapMarkers*(config: ptr Config): bool {.cdecl,
+proc renderWrapMarkers*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_render_wrap_markers", dynlib: libneo4j.}
   ## Check if wrap markers will be rendered when wrapping or truncating.
   ## 
@@ -2297,7 +2373,7 @@ proc configGetRenderWrapMarkers*(config: ptr Config): bool {.cdecl,
   ## Returns ``true`` if wrap markers are enabled, and ``false``
   ## otherwise.
 
-proc configSetRenderInspectRows*(config: ptr Config; rows: cuint) {.cdecl,
+proc `renderInspectRows=`*(config: ptr Config; rows: cuint) {.cdecl,
     importc: "neo4j_config_set_render_inspect_rows", dynlib: libneo4j.}
   ## Set the number of results to inspect when determining column widths.
   ## 
@@ -2312,7 +2388,7 @@ proc configSetRenderInspectRows*(config: ptr Config; rows: cuint) {.cdecl,
   ##   The number of results to inspect.
   ##
 
-proc configGetRenderInspectRows*(config: ptr Config): cuint {.cdecl,
+proc renderInspectRows*(config: ptr Config): cuint {.cdecl,
     importc: "neo4j_config_get_render_inspect_rows", dynlib: libneo4j.}
   ## Set the number of results to inspect when determining column widths.
   ## 
@@ -2337,8 +2413,8 @@ var resultsTableNoColors* {.importc: "neo4j_results_table_no_colors",
 var resultsTableAnsiColors* {.importc: "neo4j_results_table_ansi_colors",
                             dynlib: libneo4j.}: ptr ResultsTableColors ## Results table colorization rules for ANSI terminal output.
 
-proc configSetResultsTableColors*(config: ptr Config;
-                                 colors: ptr ResultsTableColors) {.cdecl,
+proc `resultsTableColors=`*(config: ptr Config;
+                            colors: ptr ResultsTableColors) {.cdecl,
     importc: "neo4j_config_set_results_table_colors", dynlib: libneo4j.}
   ## Set the colorization rules for rendering of results tables.
   ## 
@@ -2350,7 +2426,7 @@ proc configSetResultsTableColors*(config: ptr Config;
   ##   remain valid until the config (and any duplicates) have been
   ##   released.
 
-proc configGetResultsTableColors*(config: ptr Config): ptr ResultsTableColors {.
+proc resultsTableColors*(config: ptr Config): ptr ResultsTableColors {.
     cdecl, importc: "neo4j_config_get_results_table_colors", dynlib: libneo4j.}
   ## Get the colorization rules for rendering of results tables.
   ## 
@@ -2370,7 +2446,7 @@ var planTableNoColors* {.importc: "neo4j_plan_table_no_colors", dynlib: libneo4j
 
 var planTableAnsiColors* {.importc: "neo4j_plan_table_ansi_colors", dynlib: libneo4j.}: ptr PlanTableColors ## Plan table colorization rules for ANSI terminal output.
 
-proc configSetPlanTableColors*(config: ptr Config; colors: ptr PlanTableColors) {.
+proc `planTableColors=`*(config: ptr Config; colors: ptr PlanTableColors) {.
     cdecl, importc: "neo4j_config_set_plan_table_colors", dynlib: libneo4j.}
   ## Set the colorization rules for rendering of plan tables.
   ## 
@@ -2382,7 +2458,7 @@ proc configSetPlanTableColors*(config: ptr Config; colors: ptr PlanTableColors) 
   ##   remain valid until the config (and any duplicates) have been
   ##   released.
 
-proc configGetPlanTableColorization*(config: ptr Config): ptr PlanTableColors {.
+proc planTableColorization*(config: ptr Config): ptr PlanTableColors {.
     cdecl, importc: "neo4j_config_get_plan_table_colorization", dynlib: libneo4j.}
   ## Get the colorization rules for rendering of plan tables.
   ## 
@@ -2408,7 +2484,7 @@ proc renderTable*(stream: File; results: ptr ResultStream; width: cuint;
   ## - NEO4J_RENDER_ROWLINES - render a line between each output row.
   ## - NEO4J_RENDER_WRAP_VALUES - wrap oversized values over multiple lines.
   ## - NEO4J_RENDER_NO_WRAP_MARKERS - don't indicate wrapping of values (should
-  ## be used with NEO4J_RENDER_ROWLINES).
+  ##   be used with NEO4J_RENDER_ROWLINES).
   ## - NEO4J_RENDER_ANSI_COLOR - use ANSI escape codes for colorization.
   ## 
   ## If no flags are required, pass 0 or ``NEO4J_RENDER_DEFAULT``.
@@ -2430,7 +2506,7 @@ proc renderTable*(stream: File; results: ptr ResultStream; width: cuint;
   ## Returns 0 on success, or -1 on error (errno will be set).
 
 proc renderResultsTable*(config: ptr Config; stream: File;
-                        results: ptr ResultStream; width: cuint): cint {.cdecl,
+                         results: ptr ResultStream; width: cuint): cint {.cdecl,
     importc: "neo4j_render_results_table", dynlib: libneo4j.}
   ## Render a result stream as a table.
   ## 
@@ -2474,7 +2550,7 @@ proc renderCsv*(stream: File; results: ptr ResultStream; flags: uint32): cint {.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc renderCcsv*(config: ptr Config; stream: File; results: ptr ResultStream): cint {.
+proc renderCsv*(config: ptr Config; stream: File; results: ptr ResultStream): cint {.
     cdecl, importc: "neo4j_render_ccsv", dynlib: libneo4j.}
   ## Render a result stream as comma separated value.
   ## 
@@ -2519,10 +2595,10 @@ proc renderPlanTable*(stream: File; plan: ptr StatementPlan; width: cuint;
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc renderPlanCtable*(config: ptr Config; stream: File; plan: ptr StatementPlan;
-                       width: cuint): cint {.cdecl,
-                                             importc: "neo4j_render_plan_ctable",
-                                             dynlib: libneo4j.}
+proc renderPlantable*(config: ptr Config; stream: File; plan: ptr StatementPlan;
+                      width: cuint): cint {.cdecl,
+                                            importc: "neo4j_render_plan_ctable",
+                                            dynlib: libneo4j.}
   ## Render a statement plan as a table.
   ## 
   ## .. attention:: The output will be written to the stream using UTF-8 encoding.
