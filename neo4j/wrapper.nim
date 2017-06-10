@@ -1,3 +1,25 @@
+#
+#  wrapper.nim
+#  This file is part of nim-neo4j.
+#  
+#  Copyright 2017 Chris MacMackin <cmacmackin@gmail.com>
+#  
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#  
+
 ## A wrapper around the `libneo4j-client
 ## <https://github.com/cleishm/libneo4j-client>`_ C driver for the
 ## `Neo4j graph database <https://neo4j.com/>`_. While the wrapper has
@@ -7,6 +29,8 @@
 
 
 import posix
+
+import errors
 
 {.deadCodeElim: on.}
 when defined(windows):
@@ -1127,7 +1151,7 @@ proc clientId*(config: ptr Config): cstring {.cdecl,
 const
   NEO4J_MAXUSERNAMELEN* = 1023
 
-proc setUsername*(config: ptr Config; username: cstring): cint {.cdecl,
+proc setUsername(config: ptr Config; username: cstring): cint {.cdecl,
     importc: "neo4j_config_set_username", dynlib: libneo4j.}
   ## Set the username in the neo4j client configuration.
   ## 
@@ -1139,6 +1163,13 @@ proc setUsername*(config: ptr Config; username: cstring): cint {.cdecl,
   ##   duplicated, and thus may point to temporary memory.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `username=`*(config: ptr Config; username: string) =
+  ## Set the username in the neo4j client configuration.
+  let err = setUsername(config, username)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc username*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_username", dynlib: libneo4j.}
@@ -1155,7 +1186,7 @@ proc username*(config: ptr Config): cstring {.cdecl,
 const
   NEO4J_MAXPASSWORDLEN* = 1023
 
-proc setPassword*(config: ptr Config; password: cstring): cint {.cdecl,
+proc setPassword(config: ptr Config; password: cstring): cint {.cdecl,
     importc: "neo4j_config_set_password", dynlib: libneo4j.}
   ## Set the password in the neo4j client configuration.
   ## 
@@ -1167,6 +1198,13 @@ proc setPassword*(config: ptr Config; password: cstring): cint {.cdecl,
   ##   duplicated, and thus may point to temporary memory.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `password=`*(config: ptr Config; password: string) =
+  ## Set the password in the neo4j client configuration.
+  let err = setPassword(config, password)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc setBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallbackT;
                                 userdata: pointer): cint {.cdecl,
@@ -1188,7 +1226,7 @@ proc setBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallbackT;
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc setTlsPrivateKey*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setTlsPrivateKey(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_TLS_private_key", dynlib: libneo4j.}
   ## Set the location of a TLS private key and certificate chain.
   ## 
@@ -1202,6 +1240,16 @@ proc setTlsPrivateKey*(config: ptr Config; path: cstring): cint {.cdecl,
   ##   config remain active*.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `tlsPrivateKey=`*(config: ptr Config; path: string) =
+  ## Set the location of a TLS private key and certificate chain.
+  ## This string should remain allocated whilst the config is
+  ## allocated *or if any connections opened with the config remain
+  ## active*.
+  let err = setTlsPrivateKey(config, path)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc tlsPrivateKey*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_TLS_private_key", dynlib: libneo4j.}
@@ -1230,12 +1278,12 @@ proc setTlsPrivateKeyPasswordCallback*(config: ptr Config;
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc setTlsPrivateKeyPassword*(config: ptr Config; password: cstring): cint {.
+proc setTlsPrivateKeyPassword(config: ptr Config; password: cstring): cint {.
     cdecl, importc: "neo4j_config_set_TLS_private_key_password", dynlib: libneo4j.}
   ## Set the password for the TLS private key file.
   ## 
   ## This is a simpler alternative to using
-  ## neo4j_config_set_TLS_private_key_password_callback().
+  ## setTlsPrivateKeyPasswordCallback()
   ## 
   ## config
   ##   The neo4j client configuration to update.
@@ -1247,7 +1295,17 @@ proc setTlsPrivateKeyPassword*(config: ptr Config; password: cstring): cint {.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc setTlsCaFile*(config: ptr Config; path: cstring): cint {.cdecl,
+proc `tlsPrivateKeyPassword=`*(config: ptr Config; password: string) =
+  ## Set the password for the TLS private key file. This is a simpler
+  ## alternative to using setTlsPrivateKeyPasswordCallback(). This
+  ## string should remain allocated whilst the config is allocated *or
+  ## if any connections opened with the config remain active*.
+  let err = setTlsPrivateKeyPassword(config, password)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
+
+proc setTlsCaFile(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_TLS_ca_file", dynlib: libneo4j.}
   ## Set the location of a file containing TLS certificate authorities (and CRLs).
   ## 
@@ -1264,6 +1322,18 @@ proc setTlsCaFile*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
+proc `tlsCaFile=`*(config: ptr Config; path: string) =
+  ## Set the location of a file containing TLS certificate authorities
+  ## (and CRLs).  The file should contain the certificates of the
+  ## trusted CAs and CRLs. The file must be in base64 privacy enhanced
+  ## mail (PEM) format. This string should remain allocated whilst the
+  ## config is allocated *or if any connections opened with the config
+  ## remain active*.
+  let err = setTlsCaFile(config, path)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
+
 proc tlsCaFile*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_TLS_ca_file", dynlib: libneo4j.}
   ## Obtain the path to the TLS certificate authority file.
@@ -1273,7 +1343,7 @@ proc tlsCaFile*(config: ptr Config): cstring {.cdecl,
   ##
   ## Returns the path set in the config, or ``NULL`` if none.
 
-proc setTlsCaDir*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setTlsCaDir(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_TLS_ca_dir", dynlib: libneo4j.}
   ## Set the location of a directory of TLS certificate authorities (and CRLs).
   ## 
@@ -1285,10 +1355,22 @@ proc setTlsCaDir*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## path
   ##   The path to the directory of CAs and CRLs. This string should
-  ##   remain allocated whilst the config is allocated _or if any
-  ##   connections opened with the config remain active_.
+  ##   remain allocated whilst the config is allocated *or if any
+  ##   connections opened with the config remain active*.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `tlsCaDir=`*(config: ptr Config; path: string) =
+  ## Set the location of a directory of TLS certificate authorities
+  ## (and CRLs).  The specified directory should contain the
+  ## certificates of the trusted CAs and CRLs, named by hash according
+  ## to the ``c_rehash`` tool.  This string should remain allocated
+  ## whilst the config is allocated *or if any connections opened with
+  ## the config remain active*.
+  let err = setTlsCaFile(config, path)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc tlsCaDir*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_TLS_ca_dir", dynlib: libneo4j.}
@@ -1299,7 +1381,7 @@ proc tlsCaDir*(config: ptr Config): cstring {.cdecl,
   ##
   ## Returns the path set in the config, or ``NULL`` if none.
 
-proc setTrustKnownHosts*(config: ptr Config; enable: bool): cint {.cdecl,
+proc setTrustKnownHosts(config: ptr Config; enable: bool): cint {.cdecl,
     importc: "neo4j_config_set_trust_known_hosts", dynlib: libneo4j.}
   ## Enable or disable trusting of known hosts.
   ## 
@@ -1320,6 +1402,17 @@ proc setTrustKnownHosts*(config: ptr Config; enable: bool): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
+proc `trustKnownHosts=`*(config: ptr Config; enable: bool) =
+  ## Enable or disable trusting of known hosts.  When enabled, the
+  ## neo4j client will check if a host has been previously trusted and
+  ## stored into the "known hosts" file, and that the host fingerprint
+  ## still matches the previously accepted value. This is enabled by
+  ## default.
+  let err = setTrustKnownHosts(config, enable)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
+
 proc trustKnownHosts*(config: ptr Config): bool {.cdecl,
     importc: "neo4j_config_get_trust_known_hosts", dynlib: libneo4j.}
   ## Check if trusting of known hosts is enabled.
@@ -1329,7 +1422,7 @@ proc trustKnownHosts*(config: ptr Config): bool {.cdecl,
   ##
   ## Returns ``true`` if enabled and ``false`` otherwise.
 
-proc setKnownHostsFile*(config: ptr Config; path: cstring): cint {.cdecl,
+proc setKnownHostsFile(config: ptr Config; path: cstring): cint {.cdecl,
     importc: "neo4j_config_set_known_hosts_file", dynlib: libneo4j.}
   ## Set the location of the known hosts file for TLS certificates.
   ## 
@@ -1341,10 +1434,23 @@ proc setKnownHostsFile*(config: ptr Config; path: cstring): cint {.cdecl,
   ##
   ## path
   ##   The path to known hosts file. This string should
-  ##   remain allocated whilst the config is allocated _or if any
-  ##   connections opened with the config remain active_.
+  ##   remain allocated whilst the config is allocated *or if any
+  ##   connections opened with the config remain active*.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `knownHostsFile=`*(config: ptr Config; path: string) =
+  ## Set the location of the known hosts file for TLS certificates.
+  ## 
+  ## The file, which will be created and maintained by neo4j client,
+  ## will be used for storing trust information when using "Trust On
+  ## First Use". This string should remain allocated whilst the
+  ## config is allocated *or if any connections opened with the config
+  ## remain active*.
+  let err = setKnownHostsFile(config, path)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc knownHostsFile*(config: ptr Config): cstring {.cdecl,
     importc: "neo4j_config_get_known_hosts_file", dynlib: libneo4j.}
@@ -1408,7 +1514,7 @@ proc setUnverifiedHostCallback*(config: ptr Config;
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
-proc setSndbufSize*(config: ptr Config; size: csize): cint {.cdecl,
+proc setSndbufSize(config: ptr Config; size: csize): cint {.cdecl,
     importc: "neo4j_config_set_sndbuf_size", dynlib: libneo4j.}
   ## Set the I/O output buffer size.
   ## 
@@ -1420,6 +1526,13 @@ proc setSndbufSize*(config: ptr Config; size: csize): cint {.cdecl,
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
 
+proc `sndbufSize=`*(config: ptr Config; size: csize) =
+  ## Set the I/O output buffer size.
+  let err = setSndbufSize(config, size)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
+
 proc sndbufSize*(config: ptr Config): csize {.cdecl,
     importc: "neo4j_config_get_sndbuf_size", dynlib: libneo4j.}
   ## Get the size for the I/O output buffer.
@@ -1429,7 +1542,7 @@ proc sndbufSize*(config: ptr Config): csize {.cdecl,
   ##
   ## Returns the sndbuf size.
 
-proc setRcvbufSize*(config: ptr Config; size: csize): cint {.cdecl,
+proc setRcvbufSize(config: ptr Config; size: csize): cint {.cdecl,
     importc: "neo4j_config_set_rcvbuf_size", dynlib: libneo4j.}
   ## Set the I/O input buffer size.
   ## 
@@ -1440,6 +1553,13 @@ proc setRcvbufSize*(config: ptr Config; size: csize): cint {.cdecl,
   ##   The I/O input buffer size.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `rcvbufSize=`*(config: ptr Config; size: csize) =
+  ## Set the I/O input buffer size.
+  let err = setRcvbufSize(config, size)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc rcvbufSize*(config: ptr Config): csize {.cdecl,
     importc: "neo4j_config_get_rcvbuf_size", dynlib: libneo4j.}
@@ -1462,7 +1582,7 @@ proc `loggerProvider=`*(config: ptr Config;
   ##   The logger provider function.
   ##
 
-proc setSoSndbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
+proc setSoSndbufSize(config: ptr Config; size: cuint): cint {.cdecl,
     importc: "neo4j_config_set_so_sndbuf_size", dynlib: libneo4j.}
   ## Set the socket send buffer size.
   ## 
@@ -1475,6 +1595,14 @@ proc setSoSndbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
   ##   The socket send buffer size, or 0 to use the system default.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `soSndbufSize=`*(config: ptr Config; size: cuint) =
+  ## Set the socket send buffer size. 0 indicates the system default.
+  let err = setSoSndbufSize(config, size)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
+
 proc soSndbufSize*(config: ptr Config): cuint {.cdecl,
     importc: "neo4j_config_get_so_sndbuf_size", dynlib: libneo4j.}
   ## Get the size for the socket send buffer.
@@ -1484,7 +1612,7 @@ proc soSndbufSize*(config: ptr Config): cuint {.cdecl,
   ##
   ## Returns the so_sndbuf size.
 
-proc setSoRcvbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
+proc setSoRcvbufSize(config: ptr Config; size: cuint): cint {.cdecl,
     importc: "neo4j_config_set_so_rcvbuf_size", dynlib: libneo4j.}
   ## Set the socket receive buffer size.
   ## 
@@ -1497,6 +1625,13 @@ proc setSoRcvbufSize*(config: ptr Config; size: cuint): cint {.cdecl,
   ##   The socket receive buffer size, or 0 to use the system default.
   ##
   ## Returns 0 on success, or -1 on error (errno will be set).
+
+proc `soRcvbufSize=`*(config: ptr Config; size: cuint) =
+  ## Set the socket receive buffer size. 0 indicates the system default.
+  let err = setSoRcvbufSize(config, size)
+  if err == -1:
+    var buf: cstring = newString(1024)
+    raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc soRcvbufSize*(config: ptr Config): cuint {.cdecl,
     importc: "neo4j_config_get_so_rcvbuf_size", dynlib: libneo4j.}
