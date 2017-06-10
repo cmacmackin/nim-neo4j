@@ -45,10 +45,10 @@ else:
 
 when defined(windows):
   type
-    SsizeT* = cint
+    cssize* = cint
 else:
   type
-    SsizeT* = clonglong
+    cssize* = clonglong
 
 type
   Config* {.final, pure.} = object ## Configuration for neo4j client.
@@ -62,7 +62,7 @@ type
   Neo4jType* {.final, pure, bycopy.} = uint8 ## A neo4j value type.
 
 type
-  PasswordCallbackT* = proc (userdata: pointer; buf: cstring; len: csize): SsizeT {.cdecl.}
+  PasswordCallback* = proc (userdata: pointer; buf: cstring; len: csize): cssize {.cdecl.}
     ## Function type for callback when a passwords is required.
     ## 
     ## Should copy the password into the supplied buffer, and return the
@@ -79,7 +79,7 @@ type
     ##
     ## Returns the length of the password as copied into the buffer.
 
-  BasicAuthCallbackT* = proc (userdata: pointer; host: cstring; username: cstring;
+  BasicAuthCallback* = proc (userdata: pointer; host: cstring; username: cstring;
                            usize: csize; password: cstring; psize: csize): cint {.cdecl.}
     ## Function type for callback when username and/or password is required.
     ## 
@@ -339,10 +339,10 @@ type
     ##
     ## Return 0 on success, or -1 on error (errno will be set).
     ##
-    read*: proc (self: ptr Iostream; buf: pointer; nbyte: csize): SsizeT {.cdecl.}
-    readv*: proc (self: ptr Iostream; iov: ptr Iovec; iovcnt: cuint): SsizeT {.cdecl.}
-    write*: proc (self: ptr Iostream; buf: pointer; nbyte: csize): SsizeT {.cdecl.}
-    writev*: proc (self: ptr Iostream; iov: ptr Iovec; iovcnt: cuint): SsizeT {.cdecl.}
+    read*: proc (self: ptr Iostream; buf: pointer; nbyte: csize): cssize {.cdecl.}
+    readv*: proc (self: ptr Iostream; iov: ptr Iovec; iovcnt: cuint): cssize {.cdecl.}
+    write*: proc (self: ptr Iostream; buf: pointer; nbyte: csize): cssize {.cdecl.}
+    writev*: proc (self: ptr Iostream; iov: ptr Iovec; iovcnt: cuint): cssize {.cdecl.}
     flush*: proc (self: ptr Iostream): cint {.cdecl.}
     close*: proc (self: ptr Iostream): cint {.cdecl.}
 
@@ -576,7 +576,7 @@ type
 
 
 type
-  MapEntryT* {.final, pure.} = object
+  MapEntry* {.final, pure.} = object
     ## An entry in a neo4j map.
     key*: Neo4jValue
     value*: Neo4jValue
@@ -648,7 +648,7 @@ proc ntostring*(value: Neo4jValue; strbuf: cstring; n: csize): csize {.cdecl,
   ## Returns the number of bytes that would have been written into the buffer
   ##         had the buffer been large enough.
 
-proc fprint*(value: Neo4jValue; stream: File): SsizeT {.cdecl, importc: "neo4j_fprint",
+proc fprint*(value: Neo4jValue; stream: File): cssize {.cdecl, importc: "neo4j_fprint",
     dynlib: libneo4j.}
   ## Print a UTF-8 string representation of a neo4j value to a stream.
   ## 
@@ -862,7 +862,7 @@ proc `[]`*(value: Neo4jValue; index: cuint): Neo4jValue {.cdecl,
   ## Returns a pointer to a ``neo4j_value_t`` element, or ``NULL`` if
   ## the index is beyond the end of the list.
 
-proc newMap*(entries: ptr MapEntryT; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_map",
+proc newMap*(entries: ptr MapEntry; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_map",
                                                           dynlib: libneo4j.}
   ## Construct a neo4j value encoding a map.
   ## 
@@ -888,7 +888,7 @@ proc mapLen*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_map_size",
   ##
   ## Returns the number of entries.
 
-proc mapGetentry*(value: Neo4jValue; index: cuint): ptr MapEntryT {.cdecl,
+proc mapGetentry*(value: Neo4jValue; index: cuint): ptr MapEntry {.cdecl,
     importc: "neo4j_map_getentry", dynlib: libneo4j.}
   ## Return an entry from a neo4j map.
   ## 
@@ -935,7 +935,7 @@ proc `[]`*(value: Neo4jValue; key: Neo4jValue): Neo4jValue {.cdecl,
   ## Returns the value stored under the specified key, or ``NULL`` if the key is
   ## not known.
 
-template newMapEntry*(key: cstring, value: Neo4jValue): MapEntryT =
+template newMapEntry*(key: cstring, value: Neo4jValue): MapEntry =
   ## Constrct a neo4j map entry.
   ## 
   ## key
@@ -947,7 +947,7 @@ template newMapEntry*(key: cstring, value: Neo4jValue): MapEntryT =
   ## Returns a neo4j map entry.
   mapKentry(newString(key), value)
 
-proc mapKentry*(key: Neo4jValue; value: Neo4jValue): MapEntryT {.cdecl,
+proc mapKentry*(key: Neo4jValue; value: Neo4jValue): MapEntry {.cdecl,
     importc: "neo4j_map_kentry", dynlib: libneo4j.}
   ## Constrct a neo4j map entry using a value key.
   ## 
@@ -1206,7 +1206,7 @@ proc `password=`*(config: ptr Config; password: string) =
     var buf: cstring = newString(1024)
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
-proc setBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallbackT;
+proc setBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallback;
                                 userdata: pointer): cint {.cdecl,
     importc: "neo4j_config_set_basic_auth_callback", dynlib: libneo4j.}
   ## Set the basic authentication callback.
@@ -1261,7 +1261,7 @@ proc tlsPrivateKey*(config: ptr Config): cstring {.cdecl,
   ## Returns the path set in the config, or `NULL` if none.
 
 proc setTlsPrivateKeyPasswordCallback*(config: ptr Config;
-    callback: PasswordCallbackT; userdata: pointer): cint {.cdecl,
+    callback: PasswordCallback; userdata: pointer): cint {.cdecl,
     importc: "neo4j_config_set_TLS_private_key_password_callback",
     dynlib: libneo4j.}
   ## Set the password callback for the TLS private key file.
@@ -1367,7 +1367,7 @@ proc `tlsCaDir=`*(config: ptr Config; path: string) =
   ## to the ``c_rehash`` tool.  This string should remain allocated
   ## whilst the config is allocated *or if any connections opened with
   ## the config remain active*.
-  let err = setTlsCaFile(config, path)
+  let err = setTlsCaDir(config, path)
   if err == -1:
     var buf: cstring = newString(1024)
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
@@ -1462,7 +1462,7 @@ proc knownHostsFile*(config: ptr Config): cstring {.cdecl,
   ## Returns the path set in the config, or `NULL` if none.
 
 type
-  UnverifiedHostReasonT* {.size: sizeof(cint).} = enum
+  UnverifiedHostReason* {.size: sizeof(cint).} = enum
     NEO4J_HOST_VERIFICATION_UNRECOGNIZED, NEO4J_HOST_VERIFICATION_MISMATCH
 
 const
@@ -1493,12 +1493,12 @@ type
   ## ``NEO4J_HOST_VERIFICATION_TRUST`` if the fingerprint should be stored
   ## in the "known hosts" file and thus trusted for future connections,
   ## or -1 on error (errno should be set).
-  UnverifiedHostCallbackT* = proc (userdata: pointer; host: cstring;
+  UnverifiedHostCallback* = proc (userdata: pointer; host: cstring;
                                 fingerprint: cstring;
-                                reason: UnverifiedHostReasonT): cint {.cdecl.}
+                                reason: UnverifiedHostReason): cint {.cdecl.}
 
 proc setUnverifiedHostCallback*(config: ptr Config;
-                                callback: UnverifiedHostCallbackT;
+                                callback: UnverifiedHostCallback;
                                 userdata: pointer): cint {.cdecl,
     importc: "neo4j_config_set_unverified_host_callback", dynlib: libneo4j.}
   ## Set the unverified host callback.
@@ -1705,7 +1705,7 @@ proc maxPipelinedRequests*(config: ptr Config): cuint {.cdecl,
   ##
   ## Returns the number of requests that can be pipelined.
 
-proc dotDir*(buffer: cstring; n: csize; append: cstring): SsizeT {.cdecl,
+proc dotDir*(buffer: cstring; n: csize; append: cstring): cssize {.cdecl,
     importc: "neo4j_dot_dir", dynlib: libneo4j.}
   ## Return a path within the neo4j dot directory.
   ## 
@@ -2756,7 +2756,7 @@ proc renderPlantable*(config: ptr Config; stream: File; plan: ptr StatementPlan;
 # utility methods
 # =====================================
 
-proc dirname*(path: cstring; buffer: cstring; n: csize): SsizeT {.cdecl,
+proc dirname*(path: cstring; buffer: cstring; n: csize): cssize {.cdecl,
     importc: "neo4j_dirname", dynlib: libneo4j.}
   ## Obtain the parent directory of a specified path.
   ## 
@@ -2776,7 +2776,7 @@ proc dirname*(path: cstring; buffer: cstring; n: csize): SsizeT {.cdecl,
   ## Returns the length of the parent directory path, or -1 on error
   ## (errno will be set).
 
-proc basename*(path: cstring; buffer: cstring; n: csize): SsizeT {.cdecl,
+proc basename*(path: cstring; buffer: cstring; n: csize): cssize {.cdecl,
     importc: "neo4j_basename", dynlib: libneo4j.}
   ## Obtain the basename of a specified path.
   ## 
@@ -2835,7 +2835,7 @@ proc u8codepoint*(s: cstring; n: ptr csize): cint {.cdecl, importc: "neo4j_u8cod
   ##   The sequence of bytes containing the character.
   ##
   ## n
-  ##   A ponter to a ``size_t`` containing the maximum number of bytes
+  ##   A ponter to a ``csize`` containing the maximum number of bytes
   ##   to inspect. On successful return, this will be updated to contain
   ##   the number of bytes consumed by the character.
   ##
