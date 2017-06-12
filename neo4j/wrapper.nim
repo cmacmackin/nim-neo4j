@@ -1,24 +1,24 @@
 #
-#  wrapper.nim
+#  neo4j/wrapper.nim
 #  This file is part of nim-neo4j.
-#  
+#
 #  Copyright 2017 Chris MacMackin <cmacmackin@gmail.com>
-#  
+#
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 3 of the License, or
 #  (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
-#  
+#
 
 ## A wrapper around the `libneo4j-client
 ## <https://github.com/cleishm/libneo4j-client>`_ C driver for the
@@ -1168,7 +1168,7 @@ proc `username=`*(config: ptr Config; username: string) =
   ## Set the username in the neo4j client configuration.
   let err = setUsername(config, username)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc username*(config: ptr Config): cstring {.cdecl,
@@ -1203,7 +1203,7 @@ proc `password=`*(config: ptr Config; password: string) =
   ## Set the password in the neo4j client configuration.
   let err = setPassword(config, password)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc setBasicAuthCallback*(config: ptr Config; callback: BasicAuthCallback;
@@ -1248,7 +1248,7 @@ proc `tlsPrivateKey=`*(config: ptr Config; path: string) =
   ## active*.
   let err = setTlsPrivateKey(config, path)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc tlsPrivateKey*(config: ptr Config): cstring {.cdecl,
@@ -1302,7 +1302,7 @@ proc `tlsPrivateKeyPassword=`*(config: ptr Config; password: string) =
   ## if any connections opened with the config remain active*.
   let err = setTlsPrivateKeyPassword(config, password)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc setTlsCaFile(config: ptr Config; path: cstring): cint {.cdecl,
@@ -1331,7 +1331,7 @@ proc `tlsCaFile=`*(config: ptr Config; path: string) =
   ## remain active*.
   let err = setTlsCaFile(config, path)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc tlsCaFile*(config: ptr Config): cstring {.cdecl,
@@ -1369,7 +1369,7 @@ proc `tlsCaDir=`*(config: ptr Config; path: string) =
   ## the config remain active*.
   let err = setTlsCaDir(config, path)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc tlsCaDir*(config: ptr Config): cstring {.cdecl,
@@ -1410,7 +1410,7 @@ proc `trustKnownHosts=`*(config: ptr Config; enable: bool) =
   ## default.
   let err = setTrustKnownHosts(config, enable)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc trustKnownHosts*(config: ptr Config): bool {.cdecl,
@@ -1449,7 +1449,7 @@ proc `knownHostsFile=`*(config: ptr Config; path: string) =
   ## remain active*.
   let err = setKnownHostsFile(config, path)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc knownHostsFile*(config: ptr Config): cstring {.cdecl,
@@ -1530,7 +1530,7 @@ proc `sndbufSize=`*(config: ptr Config; size: csize) =
   ## Set the I/O output buffer size.
   let err = setSndbufSize(config, size)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc sndbufSize*(config: ptr Config): csize {.cdecl,
@@ -1558,7 +1558,7 @@ proc `rcvbufSize=`*(config: ptr Config; size: csize) =
   ## Set the I/O input buffer size.
   let err = setRcvbufSize(config, size)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc rcvbufSize*(config: ptr Config): csize {.cdecl,
@@ -1600,7 +1600,7 @@ proc `soSndbufSize=`*(config: ptr Config; size: cuint) =
   ## Set the socket send buffer size. 0 indicates the system default.
   let err = setSoSndbufSize(config, size)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc soSndbufSize*(config: ptr Config): cuint {.cdecl,
@@ -1630,7 +1630,7 @@ proc `soRcvbufSize=`*(config: ptr Config; size: cuint) =
   ## Set the socket receive buffer size. 0 indicates the system default.
   let err = setSoRcvbufSize(config, size)
   if err == -1:
-    var buf: cstring = newString(1024)
+    var buf: array[1024, char]
     raise newException(Neo4jConfigError, $strerror(errno, buf, sizeof(buf)))
 
 proc soRcvbufSize*(config: ptr Config): cuint {.cdecl,

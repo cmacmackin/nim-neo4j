@@ -34,12 +34,12 @@ macro includeModules: untyped =
   ## Includes all of the other nim modules in this directory and its
   ## subdirectories.
   var files = ""
-  
   for file in walkDirRec(tdir):
     if file[^4..^1] == ".nim" and file != testdir() & "/all_tests.nim":
       if files.len != 0:
         files.add(", ")
       files.add(file[testdir().len+1..^5])
+
   if files.len != 0:
     result = parseStmt("include " & files)
     
