@@ -752,7 +752,7 @@ template newString*(s: cstring): Neo4jValue =
   ##   the neo4j value.
   ##
   ## Returns a neo4j value encoding the String.
-  ustring(s, s.len)
+  ustring(s, s.len.cuint)
 
 proc ustring*(u: cstring; n: cuint): Neo4jValue {.cdecl, importc: "neo4j_ustring",
                                                   dynlib: libneo4j.}
@@ -785,7 +785,7 @@ proc toUstring*(value: Neo4jValue): cstring {.cdecl, importc: "neo4j_ustring_val
   ## 
   ## The pointer will be to a UTF-8 string, and will NOT be `NULL` terminated.
   ## The length of the string, in bytes, can be obtained using
-  ## neo4j_ustring_length(value).
+  ## stringLength(value).
   ## 
   ## Note that the result is undefined if the value is not of type NEO4J_STRING.
   ## 
@@ -888,7 +888,7 @@ proc mapLen*(value: Neo4jValue): cuint {.cdecl, importc: "neo4j_map_size",
   ##
   ## Returns the number of entries.
 
-proc mapGetentry*(value: Neo4jValue; index: cuint): ptr MapEntry {.cdecl,
+proc mapGetEntry*(value: Neo4jValue; index: cuint): ptr MapEntry {.cdecl,
     importc: "neo4j_map_getentry", dynlib: libneo4j.}
   ## Return an entry from a neo4j map.
   ## 

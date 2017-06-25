@@ -28,3 +28,7 @@ type
 
   Neo4jConfigError* = object of Neo4jError
     ## Exception raised when unable to set a configuration property
+
+  Neo4jTypeError* = object of Neo4jError
+    ## Exception raised when Neo4jValue of inappropriate type is
+    ## passed.
