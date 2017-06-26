@@ -23,202 +23,214 @@
 ## The set of core graph data types for use with Neo4j. They can also
 ## be used independently.
 
-import tables, sets
-import wrapper, errors
+import tables, sets, hashes, strutils
+import wrapper, basic_types
 
 type
-  Neo4jKinds* = enum
-    n4kBool
-    n4kInt
-    n4kFloat
-    n4kString
-    n4kList
-    n4kMap
+  Subgraph* = ref object of RootObj
+    nodes: HashSet[Node]
+    relationships: HashSet[Relationship]
 
-  Neo4jObject* = object
-    case kind: Neo4jKinds
-    of n4kBool: boolVal: bool
-    of n4kInt: intVal: int
-    of n4kFloat: floatVal: float
-    of n4kString: stringVal: string
-    of n4kList: listVal: seq[Neo4jObject]
-    of n4kMap: mapVal: Table[string, Neo4jObject]
-
-  Neo4jScalar* = bool or int or float or string
-
-  Neo4jConvertible* = Neo4jScalar or seq[Neo4jScalar]
-
-
-proc toNeo4jObject*(value: Neo4jValue): Neo4jObject =
-  if value.`type` == NEO4J_BOOL:
-    result = Neo4jObject(kind: n4kBool, boolVal: value.toBool)
-  elif value.`type` == NEO4J_INT:
-    result = Neo4jObject(kind: n4kInt, intVal: value.toInt.int)
-  elif value.`type` == NEO4J_FLOAT:
-    result = Neo4jObject(kind: n4kFloat, floatVal: value.toFloat.float)
-  elif value.`type` == NEO4J_STRING:
-    result = Neo4jObject(kind: n4kString, stringVal: $value.toUstring)
-  elif value.`type` == NEO4J_LIST:
-    let n = value.listLen
-    var contents = newSeq[Neo4jObject](n)
-    for i in 0..<n:
-      contents[i.int] = value[i].toNeo4jObject
-    result = Neo4jObject(kind: n4kList, listVal: contents)
-  elif value.`type` == NEO4J_MAP:
-    let n = value.mapLen
-    var contents = initTable[string,Neo4jObject](tables.rightsize(n))
-    var obj: ptr MapEntry
-    for i in 0..<n:
-      obj = value.mapGetEntry(i)
-      contents[$obj.key] = obj.value.toNeo4jObject
-    result = Neo4jObject(kind: n4kMap, mapVal: contents)
-  else:
-    raise newException(Neo4jTypeError, "Value type is not basic")
-
-converter toBool*(value: Neo4jObject): bool =
-  if value.kind != n4kBool:
-    raise newException(Neo4jTypeError, "Value not of kind n4kBool")
-  result = value.boolVal
-
-converter toInt*(value: Neo4jObject): int =
-  if value.kind != n4kInt:
-    raise newException(Neo4jTypeError, "Value not of type n4kInt")
-  result = value.intVal
-
-converter toFloat*(value: Neo4jObject): float =
-  if value.kind != n4kFloat:
-    raise newException(Neo4jTypeError, "Value not of type n4kFloat")
-  result = value.floatVal
-
-converter toString*(value: Neo4jObject): string =
-  if value.kind != n4kString:
-    raise newException(Neo4jTypeError, "Value not of type n4kString")
-  result = value.stringVal
-
-converter toSeq*(value: Neo4jObject): seq[Neo4jObject] =
-  if value.kind != n4kList:
-    raise newException(Neo4jTypeError, "Value not of type n4kList")
-  result = value.listVal
-
-converter toTable*(value: Neo4jObject): Table[string, Neo4jObject] =
-  if value.kind != n4kMap:
-    raise newException(Neo4jTypeError, "Value not of type n4kMap")
-  result = value.mapVal
-
-converter toBoolSeq*(value: Neo4jObject): seq[bool] =
-  if value.`type` != NEO4J_LIST:
-    raise newException(Neo4jTypeError, "Value not of type NEO4J_LIST")
-  result = newSeq[bool](value.len)
-  for i, obj in value.listVal.pairs:
-    result[i] = obj
-
-converter toIntSeq*(value: Neo4jObject): seq[int] =
-  if value.`type` != NEO4J_LIST:
-    raise newException(Neo4jTypeError, "Value not of type NEO4J_LIST")
-  result = newSeq[int](value.len)
-  for i, obj in value.listVal.pairs:
-    result[i] = obj
-
-converter toFloatSeq*(value: Neo4jObject): seq[float] =
-  if value.`type` != NEO4J_LIST:
-    raise newException(Neo4jTypeError, "Value not of type NEO4J_LIST")
-  result = newSeq[float](value.len)
-  for i, obj in value.listVal.pairs:
-    result[i] = obj
-
-converter toStringSeq*(value: Neo4jObject): seq[string] =
-  if value.`type` != NEO4J_LIST:
-    raise newException(Neo4jTypeError, "Value not of type NEO4J_LIST")
-  result = newSeq[string](value.len)
-  for i, obj in value.listVal.pairs:
-    result[i] = obj
-
-proc toNeo4j*(value: Neo4jConvertible): Neo4jObject =
-  case type(value)
-  of bool: result = Neo4jObject(kind: n4kBool, boolVal: value)
-  of int: result = Neo4jObject(kind: n4kInt, intVal: value)
-  of float: result = Neo4jObject(kind: n4kFloat, floatVal: value)
-  of string: result = Neo4jObject(kind: n4kString, stringVal: value)
-  of seq:
-    var contents = newSeq[Neo4jObject](value.len)
-    for i, obj in value.pairs:
-      contents[i] = obj.toNeo4j
-    result = Neo4jObject(kind: n4kList, listVal: contents)
-
-
-type
-  Node* = object
+  Node* = ref object of Subgraph
     labels: HashSet[string]
-    properties: Table[string, Neo4jObject]
+    properties: TableRef[string, Neo4jObject]
     localId: int
     remoteId: Neo4jValue
+    bound: bool
     changed: bool
 
-  Relationship* = object
+  Relationship* = ref object of Subgraph
     reltype: string
-    properties: Table[string, Neo4jObject]
+    properties: TableRef[string, Neo4jObject]
     startNode: Node
     endNode: Node
     localId: int
     remoteId: Neo4jValue
+    bound: bool
     changed: bool
 
-  Subgraph* = object
-    relationships: seq[Relationship]
-    nodes: HashSet[Node]
-
-  PropertyDict = concept x
-    x.properties is Table[string, Neo4jObject]
-    x.changed is bool
-    x.change = true
-
-
-# Routines for working with Node and Relationship properties
-
-proc `[]`*(obj: PropertyDict, key: string): Neo4jObject =
-  result = obj.properties[key]
-
-proc `[]=`*(obj: var PropertyDict, key: string, value: Neo4jObject) =
-  obj.properties[key] = value
-  obj.changed = true
-
-proc contains*(obj: PropertyDict, key: string): bool =
-  result = key in obj.properties
-
-proc len*(obj: PropertyDict): int =
-  result = obj.properties.len
-
-proc del*(obj: var PropertyDict, key: string) =
-  obj.properties.del(key)
-  obj.changed = true
-
-proc clear*(obj: var PropertyDict) =
-  obj.properties.clear()
-  obj.changed = true
-  
-iterator keys*(obj: PropertyDict): string =
-  for k in obj.properties.keys:
-    yield k
-
-iterator items*(obj: PropertyDict): string =
-  for k in obj.properties.keys:
-    yield k
-
-iterator values*(obj: PropertyDict): Neo4jObject =
-  for v in obj.properties.values:
-    yield v
-
-iterator pairs*(obj: PropertyDict): (string, Neo4jObject) =
-  for k, v in obj.properties.pairs:
-    yield (k, v)
-    
-proc toTable*(obj: PropertyDict): Table[string, Neo4jObject] =
+converter toTable*(obj: Node): TableRef[string, Neo4jObject] =
   result = obj.properties
 
-# Routines for working with Node labels
+converter toTable*(obj: Relationship): TableRef[string, Neo4jObject] =
+  result = obj.properties
 
-proc labels*(obj: Node): HashSet[string] =
-  result = obj.labels
+
+# Routines for building Subgraphs
+
+proc newSubgraph*(nodes: openarray[Node] = [],
+                  relationships: openarray[Relationship] = []): Subgraph =
+  result = Subgraph(nodes: nodes.toSet,
+                    relationships: relationships.toSet)
+  for r in result.relationships:
+    result.nodes.incl(r.startNode)
+    result.nodes.incl(r.endNode)
+
+proc `+`*(s1, s2: Subgraph): Subgraph =
+  ## Union of two subgraphs, consisting of all nodes and relationships
+  ## from the argument. Common nodes and relationships are included
+  ## only once.
+  result = Subgraph(nodes: s1.nodes + s2.nodes,
+                    relationships: s1.relationships + s2.relationships)
+
+proc `*`*(s1, s2: Subgraph): Subgraph =
+  ## Intersection of two subgraphs, consiting of all nodes and
+  ## relationships common to both arguments.
+  result = Subgraph(nodes: s1.nodes * s2.nodes,
+                    relationships: s1.relationships * s2.relationships)
+
+proc `-`*(s1, s2: Subgraph): Subgraph =
+  ## Difference of two subgraphs, consiting of nodes and relationships
+  ## present in the first argument, but not in the
+  ## second. Additionally, all nodes that are connected by the
+  ## relationships in the result are present, regardless of whether
+  ## they were present in the second argument.
+  result = Subgraph(nodes: s1.nodes - s2.nodes,
+                    relationships: s1.relationships - s2.relationships)
+  for r in result.relationships:
+    result.nodes.incl(r.startNode)
+    result.nodes.incl(r.endNode)
+
+proc `-+-`*(s1, s2: Subgraph): Subgraph =
+  ## Symmetric difference of two subgraphs, consiting of of all nodes
+  ## and relationships that exist in only one of the arguments, but
+  ## not both. Additionally, all nodes that are connected by the
+  ## relationships in the result are present, regardless of whether
+  ## they were present in both of the argument.
+  result = Subgraph(nodes: s1.nodes -+- s2.nodes,
+                    relationships: s1.relationships -+- s2.relationships)
+  for r in result.relationships:
+    result.nodes.incl(r.startNode)
+    result.nodes.incl(r.endNode)
+
+
+# Routines for working with Subgraph properties
+
+proc nodes*(obj: Subgraph): HashSet[Node] =
+  result = obj.nodes
+
+proc relationships*(obj: Subgraph): HashSet[Relationship] =
+  result = obj.relationships
+
+iterator keys*(obj: Subgraph): string =
+  ## Yields each property key present in the nodes and relationships
+  ## in this subgraph. Individual keys are yielded only once.
+  var allKeys = initSet[string]()
+  for n in obj.nodes:
+    for k in n.toTable.keys:
+      if not allKeys.containsOrIncl(k): yield k
+  for r in obj.relationships:
+    for k in r.toTable.keys:
+      if not allKeys.containsOrIncl(k): yield k
+
+iterator labels*(obj: Subgraph): string =
+  ## Yields each node label for the nodes in the subgraph. Individual
+  ## label are yielded only once.
+  var allLabels = initSet[string]()
+  for n in obj.nodes:
+    for lab in n.labels:
+      if not allLabels.containsOrIncl(lab): yield lab
+
+iterator reltypes*(obj: Subgraph): string =
+  ## Yields each relationship type present in the subgraph. Individual
+  ## types are yielded only once.
+  var allTypes = initSet[string]()
+  for r in obj.relationships:
+    if not allTypes.containsOrIncl(r.reltype): yield r.reltype
+
+
+# Routines for building Nodes and Relationships
+
+proc newNode*(labels: openArray[string],
+              properties = initTable[string, Neo4jObject](1)): Node =
+  new(result)
+  result.labels = labels.toSet
+  new(result.properties)
+  result.properties[] = properties
+  result.nodes.init(1)
+  result.nodes.incl(result)
+  result.relationships.init(1)
+  result.bound = false
+  result.changed = true
+  result.localId = 1 #FIXME need some way to assign ID numbers
+
+proc newNode*(label: string,
+              properties = initTable[string, Neo4jObject](1)): Node =
+  result = newNode([label], properties)
+
+const defaultReltype = "TO"
+  
+proc newRelationship*(startNode: Node, reltype: string, endNode: Node,
+                      properties = initTable[string,
+                      Neo4jObject](1)): Relationship =
+  new(result)
+  result.reltype = reltype.toUpperAscii
+  new(result.properties)
+  result.properties[] = properties
+  if startNode == endNode:
+    result.nodes.init(1)
+  else:
+    result.nodes.init(2)
+    result.nodes.incl(startNode)
+  result.nodes.incl(endNode)
+  result.relationships.init(1)
+  result.relationships.incl(result)
+  result.startNode = startNode
+  result.endNode = endNode
+  result.bound = false
+  result.changed = true
+  result.localId = 1 #FIXME need some way to assign ID numbers
+
+proc newRelationship*(startNode: Node, endNode: Node, properties =
+                      initTable[string, Neo4jObject](1)): Relationship =
+  result = newRelationship(startNode, defaultReltype, endNode,
+                           properties)
+
+proc newRelationship*(node: Node, reltype: string, properties =
+                      initTable[string, Neo4jObject](1)): Relationship =
+  result = newRelationship(node, reltype, node, properties)
+
+proc newRelationship*(node: Node, properties =
+                      initTable[string, Neo4jObject](1)): Relationship =
+  result = newRelationship(node, defaultReltype, node, properties)
+
+
+# Routines to produce hashes for the graph elements, used when testing
+# equality
+
+proc hash(obj: Neo4jValue): Hash =
+  result = (obj.vtOff.hash !& obj.`type`.hash !& obj.pad1.hash !&
+            obj.pad2.hash !& obj.vdata.`int`.hash !&
+            obj.vdata.`ptr`.hash !& obj.vdata.dbl.hash)
+  result = !$result
+
+proc hash*(obj: Node): Hash =
+  result = obj.bound.hash
+  if obj.bound:
+    result = result !& obj.remoteId.hash
+  else:
+    result = result !& obj.localId.hash
+  result = !$result
+
+proc hash*(obj: Relationship): Hash =
+  result = obj.bound.hash
+  if obj.bound:
+    result = result !& obj.remoteId.hash
+  else:
+    result = result !& obj.localId.hash
+  result = !$result
+
+
+# Equality tests
+
+proc `==`*(x, y: Node): bool =
+  result = x.hash == y.hash
+
+proc `==`*(x, y: Relationship): bool =
+  result = x.hash == y.hash
+
+
+# Routines for working with Node properties
 
 proc addLabel*(obj: var Node, label: string) =
   obj.labels.incl(label)
@@ -236,5 +248,12 @@ proc clearLabels*(obj: var Node) =
   obj.labels.clear()
   obj.changed = true
 
-proc hasLabel*(obj: Node, label: string): bool =
+proc hasLabel*(obj: Node, label: string): bool {.inline.} =
   result = label in obj.labels
+
+
+# Routines for working with Relationship properties
+
+proc reltype*(obj: Relationship): string {.inline.} =
+  result = obj.reltype
+
