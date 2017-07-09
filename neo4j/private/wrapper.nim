@@ -30,7 +30,7 @@
 
 import posix
 
-import errors
+import ../errors
 
 {.deadCodeElim: on.}
 when defined(windows):
@@ -611,13 +611,13 @@ proc typestr*(t: Neo4jType): cstring {.cdecl, importc: "neo4j_typestr", dynlib: 
   ##
   ## Returns a pointer to a ``NULL`` terminated string containing the type name.
 
-proc tostring*(value: Neo4jValue; strbuf: cstring; n: csize): cstring {.cdecl,
+proc stringRep*(value: Neo4jValue; strbuf: cstring; n: csize): cstring {.cdecl,
     importc: "neo4j_tostring", dynlib: libneo4j.}
   ## Get a string representation of a neo4j value.
-  ## 
+  ##
   ## Writes as much of the representation as possible into the buffer,
   ## ensuring it is always ``NULL`` terminated.
-  ## 
+  ##
   ## value
   ##   The neo4j value.
   ##
@@ -629,7 +629,7 @@ proc tostring*(value: Neo4jValue; strbuf: cstring; n: csize): cstring {.cdecl,
   ##
   ## Returns a pointer to the provided buffer.
 
-proc ntostring*(value: Neo4jValue; strbuf: cstring; n: csize): csize {.cdecl,
+proc nstringRep*(value: Neo4jValue; strbuf: cstring; n: csize): csize {.cdecl,
     importc: "neo4j_ntostring", dynlib: libneo4j.}
   ## Get a UTF-8 string representation of a neo4j value.
   ## 
@@ -645,8 +645,8 @@ proc ntostring*(value: Neo4jValue; strbuf: cstring; n: csize): csize {.cdecl,
   ## n
   ##   The length of the buffer.
   ##
-  ## Returns the number of bytes that would have been written into the buffer
-  ##         had the buffer been large enough.
+  ## Returns the number of bytes that would have been written into the
+  ## buffer had the buffer been large enough.
 
 proc fprint*(value: Neo4jValue; stream: File): cssize {.cdecl, importc: "neo4j_fprint",
     dynlib: libneo4j.}
@@ -1908,7 +1908,7 @@ proc run*(connection: ptr Connection; statement: cstring;
   ##
   ## params
   ##   The parameters for the statement, which must be a value of
-  ##   type NEO4J_MAP or #neo4j_null.
+  ##   type NEO4J_MAP or neo4j_null.
   ##
   ## Returns a ``neo4j_result_stream_t``, or ``NULL`` on error (errno will be set).
 
@@ -1931,7 +1931,7 @@ proc send*(connection: ptr Connection; statement: cstring;
   ##
   ## params
   ##   The parameters for the statement, which must be a value of
-  ##   type NEO4J_MAP or #neo4j_null.
+  ##   type NEO4J_MAP or neo4j_null.
   ##
   ## Returns a ``neo4j_result_stream_t``, or ``NULL`` on error (errno will be set).
 
@@ -2303,7 +2303,7 @@ proc `[]`*(result: ptr JobResult; index: cuint): Neo4jValue {.cdecl,
   ## index
   ##   The field index to get.
   ##
-  ## Returns the field from the result, or #neo4j_null if index is out of bounds.
+  ## Returns the field from the result, or neo4j_null if index is out of bounds.
 
 proc retain*(result: ptr JobResult): ptr JobResult {.cdecl, importc: "neo4j_retain",
     dynlib: libneo4j.}
